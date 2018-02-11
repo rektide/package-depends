@@ -5,7 +5,7 @@ var
   instance= new PackageDepends( target)
 
 export async function main(){
-	for await( var dep of instance){
+	for await( var dep of instance.depends()){
 		console.log({dep})
 	}
 }

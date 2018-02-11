@@ -1,9 +1,9 @@
-import ExtensibleFunction from "extensible-function"
-import racePredicated from "promise-race-predicated"
+import { Bound} from "extensible-function"
+import promiseRacePredicated from "promise-race-predicated"
 import UnknownFilter from "unknown-filter"
 
 import { dirname as pathDirname, join as pathJoin} from "path"
-import { stat as fsStat, readFile as fsReadfile} from "pn/fs"
+import { stat as fsStat, readFile as fsReadFile} from "pn/fs"
 
 export let defaults= {
 	modulesDirs: [ "node_modules"],
@@ -17,7 +17,7 @@ var categoryMap= {
 	peer: "peerDependencies",
 	optional: "optionalDependencies",
 	dev: "devDependencies",
-	base: "baseDependencies"
+	base: "dependencies"
 }
 
 function firstSuccessful( value, error){
@@ -31,7 +31,7 @@ export async function loadJson( filename){
 /**
 * Recurse through installed dependencies 
 */
-export class PackageDepends extends ExtensibleFunction{
+export class PackageDepends extends Bound{
 
 	// expose defaults on class as well
 	static get modulesDirs(){
@@ -57,6 +57,12 @@ export class PackageDepends extends ExtensibleFunction{
 	}
 	static set dev( val){
 		defaults.optional= val
+	}
+	static get base(){
+		return defaults.base
+	}
+	static set base( val){
+		defaults.base= val
 	}
 
 	/**
@@ -84,32 +90,32 @@ export class PackageDepends extends ExtensibleFunction{
 	/**
 	* Do the deed, list all dependencies
 	*/
-	async depends( pkgNames){
+	async* depends( pkgNames){
 		var targets= pkgNames
 		if( typeof targets=== "string"){
 			targets= [ targets]
 		}
-		if( !target){
+		if( !targets){
 			var
 			  basePkgFile= await this._find( "package.json"),
-			  basePkg= await loadJson( basePkg),
+			  basePkg= await loadJson( basePkgFile)
 			// target all packages of whatever we can drum up as the "current" package
-			target= await this._packageDependencies( basePkg)
+			targets= await this._packageDependencies( basePkg)
 		}
-		console.log({ target})
+		console.log({ targets})
 	}
 	/**
 	* Find the directory
 	* @param find - the path piece to find
 	* @param start - the
 	*/
-	async _find( find, base= this.base){
+	async _find( find, base= this._base){
 		// recurse up through all paths until we find the package.json for the given name
 		var
 		  cur= base,
 		  prev
 		while( cur!= prev){
-			var target= pathJoin( start, cur)
+			var target= pathJoin( cur, find)
 			try{
 				await fsStat( target)
 				return target
@@ -135,7 +141,7 @@ export class PackageDepends extends ExtensibleFunction{
 		  finds= dirs.map( __find)
 		try{
 			// return the first successful find
-			return await racePredicated( finds, firstSuccessful)
+			return await promiseRacePredicated( finds, firstSuccessful)
 		}catch(ex){
 			throw new Error("Not found: "+ find)
 		}
@@ -143,10 +149,10 @@ export class PackageDepends extends ExtensibleFunction{
 	_packageDependencies( pkg){
 		var
 		  // for each enabled category, get all package names
-		  pkgArrays= Object.keys( categoryMap).filter( this.isCategoryEnabled).forEach( cat=> Object.keys( pkg[ categoryMap[ cat]])),
-		  unknownFilter= new UnknownFilter(),
+		  categories= Object.keys( categoryMap).filter( this.isCategoryEnabled),
+		  pkgArrays= categories.map( cat=> Object.keys( pkg[ categoryMap[ cat]]||{})),
 		  // flatten and unique-ify
-		  flattened= Array.prototype.concat.apply([], pkgArrays).filter( unknownFilter)
+		  flattened= Array.prototype.concat.apply([], pkgArrays).filter( new UnknownFilter())
 		return flattened
 	}
 	/**
