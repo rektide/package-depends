@@ -7,8 +7,8 @@ export async function main( target){
 	  instance= new PackageDepends({ base: target}),
 	  cwd= process.cwd()
 	for await( var dep of instance.depends()){
-		if( dep.startsWith( cwd)){
-			dep= dep.slice( cwd.length+ 1)
+		if( dep.startsWith( target)){
+			dep= dep.slice( target.length+ 1)
 		}
 		console.log( dep)
 	}
