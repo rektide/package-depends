@@ -7,6 +7,9 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
+	"bin": {
+		"package-depends": "./package-depends.sh"
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://archive.voodoowarez.com/package-depends"

@@ -68,7 +68,7 @@ export class PackageDepends{
 	/**
 	* @param optionalPackageName - a specific package name to try to start from, else tries to find a current package to start from
 	*/
-	constructor( optionalPackageName, options= {}){
+	constructor( options= {}){
 		Object.assign( this, options)
 
 		// write state as non-enumerable properties
@@ -90,6 +90,9 @@ export class PackageDepends{
 	* Do the deed, list all dependencies
 	*/
 	async* depends( pkgNames, base= this._base){
+		if( !pkgNames){
+			pkgNames= this.pkgNames
+		}
 		if( !pkgNames){
 			pkgNames= ".."
 		}
