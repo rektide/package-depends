@@ -23,6 +23,7 @@
 	},
 	"dependencies": {
 		"@std/esm": "^0.21.2",
+		"async-iterator-muxer": "^1.1.0",
 		"pn": "^1.1.0",
 		"promise-race-predicated": "^1.0.0",
 		"unknown-filter": "^1.0.1"

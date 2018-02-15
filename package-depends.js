@@ -1,5 +1,6 @@
 import { Bound} from "extensible-function"
 import promiseRacePredicated from "promise-race-predicated"
+import AsyncIteratorMuxer from "async-iterator-muxer"
 import UnknownFilter from "unknown-filter"
 
 import { dirname as pathDirname, join as pathJoin} from "path"
@@ -84,6 +85,9 @@ export class PackageDepends extends Bound{
 			},
 			isCategoryEnabled: {
 				value: this.isCategoryEnabled.bind( this)
+			},
+			_packageDependencies: {
+				value: this._packageDependencies.bind( this)
 			}
 		})
 	}
@@ -91,18 +95,32 @@ export class PackageDepends extends Bound{
 	* Do the deed, list all dependencies
 	*/
 	async* depends( pkgNames){
-		var targets= pkgNames
-		if( typeof targets=== "string"){
-			targets= [ targets]
+		var
+		  done= []
+		  muxer= new AsyncIteratorMuxer()
+		function loadTarget( name){
+			// find package.json
+			var dep= this._find( "package.json", name)
+			  // load package.json file to js objeect
+			  .then( loadJson)
+			  // get it's dependency names
+			  .then( this._packageDependencies)
+			  // filter for dependencies we've never heard of
+			  .then( pkgs=> pkgs.filter( this._unknown))
+			  // add dependencies to output stream
+			  .then( unique=> muxer.add( unique))
+			// dont finish until this target is done
+			done.push( dep)
 		}
-		if( !targets){
-			var
-			  basePkgFile= await this._find( "package.json"),
-			  basePkg= await loadJson( basePkgFile)
-			// target all packages of whatever we can drum up as the "current" package
-			targets= await this._packageDependencies( basePkg)
+
+		if( !pkgNames){
+			pkgNames= "."
 		}
-		console.log({ targets})
+		if( typeof pkgNames=== "string"){
+			pkgNames= [ pkgNames]
+		}
+		targets.forEach( loadTarget)
+		return yield* muxer
 	}
 	/**
 	* Find the directory
