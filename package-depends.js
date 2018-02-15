@@ -5,6 +5,8 @@ import UnknownFilter from "unknown-filter"
 import { dirname as pathDirname, join as pathJoin} from "path"
 import { stat as fsStat, readFile as fsReadFile} from "pn/fs"
 
+process.on("unhandledRejection", console.error.bind(console))
+
 export let defaults= {
 	modulesDirs: [ "node_modules"],
 	peer: true,
@@ -97,41 +99,49 @@ export class PackageDepends{
 	*/
 	async* depends( pkgNames){
 		if( !pkgNames){
-			pkgNames= "."
+			pkgNames= ".."
 		}
 		if( typeof pkgNames=== "string"){
 			pkgNames= [ pkgNames]
 		}
 
-		var muxer= new AsyncIteratorMuxer()
-		pkgNames.forEach( this._deps)
+		var
+		  muxer= new AsyncIteratorMuxer(),
+		  load= async( name)=>{
+			// get dependencies
+			var newDeps= this._deps( name)
+			// queue newDeps for output when available
+			muxer.add( newDeps)
+			// await and recurse
+			newDeps= await newDeps
+			newDeps.forEach( load)
+		  }
+		pkgNames.forEach( load)
 		return yield* muxer
 	}
 	/**
 	* Recursively find a package's dependencies
 	*/
-	async _deps( name){
+	_deps( name){
 		// find package.json
-		var deps= this._findModule( join( name, "package.json"))
+		var deps= this._findModule( pathJoin( name, "package.json"))
 		  // load package.json file to js objeect
 		  .then( loadJson)
 		  // get it's dependency names
 		  .then( this._packageDependencies)
 		  // filter for dependencies we've never heard of
 		  .then( pkgs=> pkgs.filter( this._unknown))
-		  // add dependencies to output stream
-		  .then( unique=> muxer.add( unique))
-		mxuer.add( deps)
+		return deps
 	}
 	/**
-	* Walk up in directories, looking for `find` inside of a directory in `modulesDirs`.
+	* Walk up the tree looking in modulesDirs for the package
 	*/
-	async _findModule( find, base= this.base){
-		async function __find( modulesDir){
-			try{
-				var moduleBase= join( base, modulesDir)
-				return await this._find( find, moduleBase)
-			}catch( ex){}
+	async _findModule( find, base= this._base){
+		var __find= async ( modulesDir)=> {
+			var
+			  sought= pathJoin( modulesDir, find),
+			  found= await this._find( sought, base)
+			return found
 		}
 		var
 		  dirs= this.modulesDirs|| PackageDepends.modulesDirs,
@@ -145,7 +155,7 @@ export class PackageDepends{
 		}
 	}
 	/**
-	* Find the directory
+	* Walk up in directories, looking for `find`
 	* @param find - the path piece to find
 	* @param start - the
 	*/
