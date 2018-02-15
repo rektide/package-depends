@@ -5,8 +5,6 @@ import UnknownFilter from "unknown-filter"
 import { dirname as pathDirname, join as pathJoin} from "path"
 import { stat as fsStat, readFile as fsReadFile} from "pn/fs"
 
-process.on("unhandledRejection", console.error.bind(console))
-
 export let defaults= {
 	modulesDirs: [ "node_modules"],
 	peer: true,
@@ -85,9 +83,6 @@ export class PackageDepends{
 			},
 			isCategoryEnabled: {
 				value: this.isCategoryEnabled.bind( this)
-			},
-			_packageDependencies: {
-				value: this._packageDependencies.bind( this)
 			}
 		})
 	}
@@ -107,23 +102,27 @@ export class PackageDepends{
 		  load= async( name, pkgBase)=>{
 			var
 			  // find package.json filename
-			  pkg= this._findModule( pathJoin( name, "package.json"), pkgBase),
+			  filename= this._findModule( pathJoin( name, "package.json"), pkgBase),
 			  // get deps
-			  newDeps= pkg
+			  newDeps= filename
 				// load package.json file to js objeect
 				.then( loadJson)
 				// get it's dependency names
-				.then( this._packageDependencies)
-				// filter for dependencies we've never heard of
-				.then( pkgs=> pkgs.filter( this._unknown))
-
+				.then( async pkg=> {
+					var
+					  base= pathDirname( await filename),
+					  newDeps= this
+						// find relevant deps
+						._packageDependencies( pkg)
+						// filter for unknown ones
+						.filter( this._unknown)
+						// load
+						.map( dep=> load( dep, base))
+					return newDeps
+				})
 			// queue newDeps for output when available
 			muxer.add( newDeps)
-
-			// await and recurse
-			newDeps= await newDeps
-			pkg= await pkg
-			newDeps.forEach( pkgName=> load( pkgName, pathDirname( pkg)))
+			return pathDirname( await filename)
 		  }
 		pkgNames.forEach( pkgName=> load( pkgName, base))
 		return yield* muxer
