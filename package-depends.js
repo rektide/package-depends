@@ -1,4 +1,3 @@
-import { Bound} from "extensible-function"
 import promiseRacePredicated from "promise-race-predicated"
 import AsyncIteratorMuxer from "async-iterator-muxer"
 import UnknownFilter from "unknown-filter"
@@ -32,7 +31,7 @@ export async function loadJson( filename){
 /**
 * Recurse through installed dependencies 
 */
-export class PackageDepends extends Bound{
+export class PackageDepends{
 
 	// expose defaults on class as well
 	static get modulesDirs(){
@@ -70,7 +69,6 @@ export class PackageDepends extends Bound{
 	* @param optionalPackageName - a specific package name to try to start from, else tries to find a current package to start from
 	*/
 	constructor( optionalPackageName, options= {}){
-		super( PackageDepends.prototype.depends, optionalPackageName)
 		Object.assign( this, options)
 
 		// write state as non-enumerable properties

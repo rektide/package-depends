@@ -1,10 +1,11 @@
 import PackageDepends from "./package-depends.js"
 
-var
-  target= process.argv[2]|| process.cwd(),
-  instance= new PackageDepends( target)
+console.log({PackageDepends})
 
-export async function main(){
+export async function main( target){
+	target= target|| process.argv[2]|| process.cwd()
+
+	var instance= new PackageDepends( target)
 	for await( var dep of instance.depends()){
 		console.log({dep})
 	}
