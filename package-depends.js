@@ -86,6 +86,9 @@ export class PackageDepends{
 			},
 			_packageDependencies: {
 				value: this._packageDependencies.bind( this)
+			},
+			_deps: {
+				value: this._deps.bind( this)
 			}
 		})
 	}
@@ -93,32 +96,53 @@ export class PackageDepends{
 	* Do the deed, list all dependencies
 	*/
 	async* depends( pkgNames){
-		var
-		  done= []
-		  muxer= new AsyncIteratorMuxer()
-		function loadTarget( name){
-			// find package.json
-			var dep= this._find( "package.json", name)
-			  // load package.json file to js objeect
-			  .then( loadJson)
-			  // get it's dependency names
-			  .then( this._packageDependencies)
-			  // filter for dependencies we've never heard of
-			  .then( pkgs=> pkgs.filter( this._unknown))
-			  // add dependencies to output stream
-			  .then( unique=> muxer.add( unique))
-			// dont finish until this target is done
-			done.push( dep)
-		}
-
 		if( !pkgNames){
 			pkgNames= "."
 		}
 		if( typeof pkgNames=== "string"){
 			pkgNames= [ pkgNames]
 		}
-		targets.forEach( loadTarget)
+
+		var muxer= new AsyncIteratorMuxer()
+		pkgNames.forEach( this._deps)
 		return yield* muxer
+	}
+	/**
+	* Recursively find a package's dependencies
+	*/
+	async _deps( name){
+		// find package.json
+		var deps= this._findModule( join( name, "package.json"))
+		  // load package.json file to js objeect
+		  .then( loadJson)
+		  // get it's dependency names
+		  .then( this._packageDependencies)
+		  // filter for dependencies we've never heard of
+		  .then( pkgs=> pkgs.filter( this._unknown))
+		  // add dependencies to output stream
+		  .then( unique=> muxer.add( unique))
+		mxuer.add( deps)
+	}
+	/**
+	* Walk up in directories, looking for `find` inside of a directory in `modulesDirs`.
+	*/
+	async _findModule( find, base= this.base){
+		async function __find( modulesDir){
+			try{
+				var moduleBase= join( base, modulesDir)
+				return await this._find( find, moduleBase)
+			}catch( ex){}
+		}
+		var
+		  dirs= this.modulesDirs|| PackageDepends.modulesDirs,
+		  // launch a find for each known modulesDir
+		  finds= dirs.map( __find)
+		try{
+			// return the first successful find
+			return await promiseRacePredicated( finds, firstSuccessful)
+		}catch(ex){
+			throw new Error("Not found: "+ find)
+		}
 	}
 	/**
 	* Find the directory
@@ -142,26 +166,8 @@ export class PackageDepends{
 		throw new Error("Not found: "+ find)
 	}
 	/**
-	* Walk up in directories, looking for `find` inside of a directory in `modulesDirs`.
+	* For a pkg file, return a list of all dependencies for enabled types (optional, peer, dev, base, &c)
 	*/
-	async _findModule( find, base= this.base){
-		async function __find( modulesDir){
-			try{
-				var moduleBase= path.join( base, modulesDir)
-				return await this._find( find, moduleBase)
-			}catch( ex){}
-		}
-		var
-		  dirs= this.modulesDirs|| PackageDepends.modulesDirs,
-		  // launch a find for each known modulesDir
-		  finds= dirs.map( __find)
-		try{
-			// return the first successful find
-			return await promiseRacePredicated( finds, firstSuccessful)
-		}catch(ex){
-			throw new Error("Not found: "+ find)
-		}
-	}
 	_packageDependencies( pkg){
 		var
 		  // for each enabled category, get all package names
