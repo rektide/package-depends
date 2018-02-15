@@ -88,16 +88,13 @@ export class PackageDepends{
 			},
 			_packageDependencies: {
 				value: this._packageDependencies.bind( this)
-			},
-			_deps: {
-				value: this._deps.bind( this)
 			}
 		})
 	}
 	/**
 	* Do the deed, list all dependencies
 	*/
-	async* depends( pkgNames){
+	async* depends( pkgNames, base= this._base){
 		if( !pkgNames){
 			pkgNames= ".."
 		}
@@ -107,31 +104,29 @@ export class PackageDepends{
 
 		var
 		  muxer= new AsyncIteratorMuxer(),
-		  load= async( name)=>{
-			// get dependencies
-			var newDeps= this._deps( name)
+		  load= async( name, pkgBase)=>{
+			var
+			  // find package.json filename
+			  pkg= this._findModule( pathJoin( name, "package.json"), pkgBase),
+			  // get deps
+			  newDeps= pkg
+				// load package.json file to js objeect
+				.then( loadJson)
+				// get it's dependency names
+				.then( this._packageDependencies)
+				// filter for dependencies we've never heard of
+				.then( pkgs=> pkgs.filter( this._unknown))
+
 			// queue newDeps for output when available
 			muxer.add( newDeps)
+
 			// await and recurse
 			newDeps= await newDeps
-			newDeps.forEach( load)
+			pkg= await pkg
+			newDeps.forEach( pkgName=> load( pkgName, pathDirname( pkg)))
 		  }
-		pkgNames.forEach( load)
+		pkgNames.forEach( pkgName=> load( pkgName, base))
 		return yield* muxer
-	}
-	/**
-	* Recursively find a package's dependencies
-	*/
-	_deps( name){
-		// find package.json
-		var deps= this._findModule( pathJoin( name, "package.json"))
-		  // load package.json file to js objeect
-		  .then( loadJson)
-		  // get it's dependency names
-		  .then( this._packageDependencies)
-		  // filter for dependencies we've never heard of
-		  .then( pkgs=> pkgs.filter( this._unknown))
-		return deps
 	}
 	/**
 	* Walk up the tree looking in modulesDirs for the package
@@ -171,7 +166,7 @@ export class PackageDepends{
 				return target
 			}catch( ex){}
 			prev= cur
-			cur= pathBasename( cur)
+			cur= pathDirname( cur)
 		}
 		throw new Error("Not found: "+ find)
 	}
