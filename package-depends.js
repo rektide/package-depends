@@ -102,6 +102,7 @@ export class PackageDepends{
 
 		var
 		  muxer= new AsyncIteratorMuxer(),
+		  trimmer= val=> val.startsWith( this.base)? val.slice( this.base.length+ 1): val,
 		  load= async( name, pkgBase)=>{
 			var
 			  // find package.json filename
@@ -125,7 +126,12 @@ export class PackageDepends{
 				})
 			// queue newDeps for output when available
 			muxer.add( newDeps)
-			return pathDirname( await filename)
+			// resolve filename and trim
+			var resolved= pathDirname( await filename)
+			if( this.trim){
+				resolved= trimmer( resolved)
+			}
+			return resolved
 		  }
 		pkgNames.forEach( pkgName=> load( pkgName, base))
 		return yield* muxer
