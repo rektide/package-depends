@@ -1,24 +1,24 @@
 import promiseRacePredicated from "promise-race-predicated"
 import AsyncIteratorMuxer from "async-iterator-muxer"
-import UnknownFilter from "unknown-filter"
+import UnknownFilter from "unknown-filter/unknown-filter.js"
 
 import { dirname as pathDirname, join as pathJoin} from "path"
 import { stat as fsStat, readFile as fsReadFile} from "pn/fs"
 
 export let defaults= {
 	modulesDirs: [ "node_modules"],
-	peer: true,
-	optional: true,
-	dev: false,
-	base: true
+	peerDependencies: true,
+	optionalDependencies: true,
+	devDependencies: false,
+	dependencies: true
 }
 
-var categoryMap= {
-	peer: "peerDependencies",
-	optional: "optionalDependencies",
-	dev: "devDependencies",
-	base: "dependencies"
-}
+export let _categories= [
+	"dependencies",
+	"devDependencies",
+	"peerDependencies",
+	"optionalDependencies"
+]
 
 function firstSuccessful( value, error){
 	return !!value
@@ -37,32 +37,32 @@ export class PackageDepends{
 	static get modulesDirs(){
 		return defaults.modulesDirs
 	}
-	static set modulesDir( dirs){
+	static set modulesDirs( dirs){
 		defaults.modulesDirs= dirs
 	}
-	static get peer(){
-		return defaults.peer
+	static get peerDependencies(){
+		return defaults.peerDependencies
 	}
-	static set peer( val){
-		defaults.peer= val
+	static set peerDependencies( val){
+		defaults.peerDependencies= val
 	}
-	static get optional(){
-		return defaults.optional
+	static get optionalDependencies(){
+		return defaults.optionalDependencies
 	}
-	static set optional( val){
-		defaults.optional= val
+	static set optionalDependencies( val){
+		defaults.optionalDependencies= val
 	}
-	static get dev(){
-		return defaults.dev
+	static get devDependencies(){
+		return defaults.devDependencies
 	}
-	static set dev( val){
-		defaults.optional= val
+	static set devDependencies( val){
+		defaults.devDependencies= val
 	}
-	static get base(){
-		return defaults.base
+	static get dependencies(){
+		return defaults.dependencies
 	}
-	static set base( val){
-		defaults.base= val
+	static set dependencies( val){
+		defaults.dependencies= val
 	}
 
 	/**
@@ -73,7 +73,7 @@ export class PackageDepends{
 
 		// write state as non-enumerable properties
 		Object.defineProperties( this, {
-			_base: {
+			base: {
 				value: options.base|| (options.module&& pathDirname( options.module.id))|| process.cwd(),
 				writable: true
 			},
@@ -89,17 +89,17 @@ export class PackageDepends{
 	/**
 	* Do the deed, list all dependencies
 	*/
-	async* depends( pkgNames, base= this._base){
+	async* depends( pkgNames, base= this.base){
 		if( !pkgNames){
 			pkgNames= this.pkgNames
 		}
 		if( !pkgNames){
+			// we want "this" package, which won't be in node_modules
 			pkgNames= ".."
 		}
 		if( typeof pkgNames=== "string"){
 			pkgNames= [ pkgNames]
 		}
-
 		var
 		  muxer= new AsyncIteratorMuxer(),
 		  trimmer= val=> val.startsWith( this.base)? val.slice( this.base.length+ 1): val,
@@ -139,7 +139,7 @@ export class PackageDepends{
 	/**
 	* Walk up the tree looking in modulesDirs for the package
 	*/
-	async _findModule( find, base= this._base){
+	async _findModule( find, base= this.base){
 		var __find= async ( modulesDir)=> {
 			var
 			  sought= pathJoin( modulesDir, find),
@@ -162,7 +162,7 @@ export class PackageDepends{
 	* @param find - the path piece to find
 	* @param start - the
 	*/
-	async _find( find, base= this._base){
+	async _find( find, base= this.base){
 		// recurse up through all paths until we find the package.json for the given name
 		var
 		  cur= base,
@@ -184,8 +184,8 @@ export class PackageDepends{
 	_packageDependencies( pkg){
 		var
 		  // for each enabled category, get all package names
-		  categories= Object.keys( categoryMap).filter( this.isCategoryEnabled),
-		  pkgArrays= categories.map( cat=> Object.keys( pkg[ categoryMap[ cat]]||{})),
+		  categories= _categories.filter( this.isCategoryEnabled),
+		  pkgArrays= categories.map( cat=> Object.keys( pkg[ cat]||{})),
 		  // flatten and unique-ify
 		  flattened= Array.prototype.concat.apply([], pkgArrays).filter( new UnknownFilter())
 		return flattened
