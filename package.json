@@ -1,6 +1,6 @@
 {
 	"name": "package-depends",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Iterate through all dependencies",
 	"main": "index.js",
 	"module": "package-depends.js",
