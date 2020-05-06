@@ -3,7 +3,8 @@ import AsyncIteratorMuxer from "async-iterator-muxer"
 import UnknownFilter from "unknown-filter/unknown-filter.js"
 
 import { dirname as pathDirname, join as pathJoin} from "path"
-import { stat as fsStat, readFile as fsReadFile} from "pn/fs"
+import { promises} from "fs"
+const { stat: fsState, readFile: fsReadFile} = promises;
 
 export let defaults= {
 	modulesDirs: [ "node_modules"],
