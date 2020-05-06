@@ -1,4 +1,6 @@
+#!/usr/bin/env node
 import PackageDepends from "./package-depends.js"
+import isMain from "is-main"
 
 export async function main( target){
 	process.on( "unhandledRejection", console.error)
@@ -12,3 +14,7 @@ export async function main( target){
 	}
 }
 export default main
+
+if( isMain( import.meta.url)){
+	main()
+}

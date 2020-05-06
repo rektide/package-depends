@@ -2,7 +2,8 @@
 	"name": "package-depends",
 	"version": "1.0.2",
 	"description": "Iterate through all dependencies",
-	"main": "index.js",
+	"type": "module",
+	"main": "package-depends.js",
 	"module": "package-depends.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
@@ -18,15 +19,9 @@
 	"author": "rektide de la faye",
 	"license": "MIT",
 	"esm": true,
-	"@std/esm": {
-		"esm": "js",
-		"cjs": {
-			"namedExports": true
-		}
-	},
 	"dependencies": {
-		"@std/esm": "^0.21.2",
 		"async-iterator-muxer": "^1.1.0",
+		"is-main": "^0.2.0",
 		"pn": "^1.1.0",
 		"promise-race-predicated": "^1.0.0",
 		"unknown-filter": "^1.0.1"

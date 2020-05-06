@@ -6,4 +6,4 @@ SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 
 DIR="$(pwd)"
-(cd $SCRIPTPATH; node --harmony_async_iteration ./index.js $DIR)
+(cd $SCRIPTPATH; ./main.js $DIR)
